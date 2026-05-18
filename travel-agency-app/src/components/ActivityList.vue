@@ -1,9 +1,16 @@
 <script setup>
-defineProps({
+const props = defineProps({
   activities: { type: Array, default: () => [] },
+  selectedActivities: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   error: { type: String, default: null },
 })
+
+const emit = defineEmits(['toggle'])
+
+function isSelected(activity) {
+  return props.selectedActivities?.some((a) => a.id === activity.id) ?? false
+}
 </script>
 
 <template>
@@ -28,10 +35,13 @@ defineProps({
       v-for="activity in activities"
       :key="activity.id"
       class="card activity-card"
+      :class="{ 'activity-card--selected': isSelected(activity) }"
+      @click="emit('toggle', activity)"
     >
       <div class="activity-card__icon">{{ activity.icon }}</div>
 
       <div class="activity-card__body">
+        <div v-if="isSelected(activity)" class="activity-card__selected-badge">✓ Added</div>
         <div class="activity-card__top">
           <div>
             <div class="activity-name">{{ activity.name }}</div>
@@ -81,9 +91,25 @@ defineProps({
   padding: 1rem;
 }
 
+.card {
+  cursor: pointer;
+}
+
 .card:hover {
   border-color: var(--color-primary-light);
   box-shadow: 0 4px 16px rgba(26, 54, 93, 0.1);
+}
+
+.activity-card--selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.activity-card__selected-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 4px;
 }
 
 .skeleton {

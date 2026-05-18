@@ -6,7 +6,7 @@ const props = defineProps({
   selectedFlight: { type: Object, default: null },
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'view-history'])
 
 function stopsLabel(stops) {
   if (stops === 0) return 'Nonstop'
@@ -88,6 +88,7 @@ function stopsClass(stops) {
         <span v-if="flight.seatsAvailable != null" class="tag">{{ flight.seatsAvailable }} seats left</span>
         <span v-else class="tag">Live availability</span>
         <span v-if="selectedFlight?.id === flight.id" class="selected-indicator">✓ Selected</span>
+        <button class="trends-btn" @click.stop="emit('view-history', flight)">📈 Price Trends</button>
       </div>
     </div>
   </div>
@@ -293,6 +294,25 @@ function stopsClass(stops) {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--color-primary);
+}
+
+.trends-btn {
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1.5px solid var(--color-primary-light);
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.trends-btn:hover {
+  background: var(--color-primary);
+  color: #fff;
 }
 
 .badge {

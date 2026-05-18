@@ -8,9 +8,23 @@ from app.core.database import Base # Import Base from your core config
 
 
 class HotelMaster(Base):
-    __tablename__ = "hotel_master"
+    __tablename__ = "Hotel_Master"
     Hotel_Code = Column(Integer, primary_key=True, index=True, autoincrement=True)
     Hotel_Name = Column(String, nullable=False)
+
+
+class AirlineMaster(Base):
+    __tablename__ = "Airline_Master"
+    Airline_Code = Column(String, primary_key=True, index=True)
+    Airline_Name = Column(String, nullable=False)
+
+
+class AirportMaster(Base):
+    __tablename__ = "Airport_Master"
+    Airport_Code = Column(String, primary_key=True, index=True)
+    Airport_Name = Column(String, nullable=False)
+    City = Column(String, nullable=True)
+    Country = Column(String, nullable=True)
 
 
 class User(Base):

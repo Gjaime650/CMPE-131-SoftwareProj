@@ -39,15 +39,13 @@ def _validate_hotel_code(db: Session, hotel_code: int) -> None:
         db.execute(
             text(
                 """
-                INSERT INTO Hotel_Master (Hotel_Code, Hotel_Name, City, Country)
-                VALUES (:hotel_code, :hotel_name, :city, :country)
+                INSERT INTO Hotel_Master (Hotel_Code, Hotel_Name)
+                VALUES (:hotel_code, :hotel_name)
                 """
             ),
             {
                 "hotel_code": hotel_code,
                 "hotel_name": f"Auto Hotel {hotel_code}",
-                "city": "Unknown",
-                "country": "Unknown",
             },
         )
     except IntegrityError as exc:

@@ -10,6 +10,68 @@ const isLoading = ref(true)
 const errorMessage = ref('')
 const trips = ref([])
 
+const editTarget = ref(null)
+const isSaving = ref(false)
+const saveError = ref('')
+
+function stripSeconds(time) {
+  return String(time || '').slice(0, 5)
+}
+
+function openEdit(type, bookingId, reservation) {
+  saveError.value = ''
+  if (type === 'flight') {
+    editTarget.value = {
+      type,
+      bookingId,
+      reservationNo: reservation.Reservation_No,
+      form: {
+        Departure_Date: reservation.Departure_Date || '',
+        Departure_Time: stripSeconds(reservation.Departure_Time),
+        Arrive_Date: reservation.Arrive_Date || '',
+        Arrive_Time: stripSeconds(reservation.Arrive_Time),
+      },
+    }
+  } else {
+    editTarget.value = {
+      type,
+      bookingId,
+      reservationNo: reservation.Reservation_No,
+      form: {
+        Check_In_Date: reservation.Check_In_Date || '',
+        Check_In_Time: stripSeconds(reservation.Check_In_Time),
+        Check_Out_Date: reservation.Check_Out_Date || '',
+        Check_Out_Time: stripSeconds(reservation.Check_Out_Time),
+      },
+    }
+  }
+}
+
+async function submitEdit() {
+  if (!editTarget.value) return
+  isSaving.value = true
+  saveError.value = ''
+  try {
+    const { type, bookingId, reservationNo, form } = editTarget.value
+    const payload = { ...form }
+    if (type === 'flight') {
+      if (payload.Departure_Time?.length === 5) payload.Departure_Time += ':00'
+      if (payload.Arrive_Time?.length === 5) payload.Arrive_Time += ':00'
+      await bookingService.updateFlightReservation(bookingId, reservationNo, payload)
+    } else {
+      if (payload.Check_In_Time?.length === 5) payload.Check_In_Time += ':00'
+      if (payload.Check_Out_Time?.length === 5) payload.Check_Out_Time += ':00'
+      await bookingService.updateHotelReservation(bookingId, reservationNo, payload)
+    }
+    editTarget.value = null
+    await loadTrips()
+  } catch (e) {
+    saveError.value = e.message || 'Failed to save changes.'
+  } finally {
+    isSaving.value = false
+  }
+}
+
 function formatDate(value) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value || 'N/A'
@@ -86,6 +148,7 @@ onMounted(() => {
               <div>Departure: {{ formatDate(flight.Departure_Date) }} {{ flight.Departure_Time }}</div>
               <div>Arrival: {{ formatDate(flight.Arrive_Date) }} {{ flight.Arrive_Time }}</div>
               <div>Rate: ${{ Number(flight.Rate || 0).toLocaleString() }}</div>
+              <button class="edit-btn" @click="openEdit('flight', trip.bookingId, flight)">Edit</button>
             </div>
           </div>
         </section>
@@ -96,15 +159,72 @@ onMounted(() => {
           <div v-else class="reservation-grid">
             <div v-for="hotel in trip.hotelReservations" :key="`${trip.bookingId}-${hotel.Reservation_No}`" class="reservation-card">
               <div class="reservation-card__title">Hotel Reservation</div>
-              <div><strong>Hotal Name:</strong> {{ hotel.Hotel_Name || 'Hotel name unavailable' }}</div>
+              <div><strong>Hotel Name:</strong> {{ hotel.Hotel_Name || 'Hotel name unavailable' }}</div>
               <div>Check in: {{ formatDate(hotel.Check_In_Date) }} {{ hotel.Check_In_Time }}</div>
               <div>Check out: {{ formatDate(hotel.Check_Out_Date) }} {{ hotel.Check_Out_Time }}</div>
               <div>Rate: ${{ Number(hotel.Rate || 0).toLocaleString() }}</div>
+              <button class="edit-btn" @click="openEdit('hotel', trip.bookingId, hotel)">Edit</button>
             </div>
           </div>
         </section>
       </article>
     </div>
+
+    <!-- Edit modal -->
+    <Teleport to="body">
+      <div v-if="editTarget" class="modal-backdrop" @click.self="editTarget = null">
+        <div class="modal">
+          <h2 class="modal__title">Edit {{ editTarget.type === 'flight' ? 'Flight' : 'Hotel' }} Reservation</h2>
+
+          <div v-if="editTarget.type === 'flight'" class="modal__fields">
+            <label class="field-group">
+              <span>Departure Date</span>
+              <input type="date" v-model="editTarget.form.Departure_Date" />
+            </label>
+            <label class="field-group">
+              <span>Departure Time</span>
+              <input type="time" v-model="editTarget.form.Departure_Time" />
+            </label>
+            <label class="field-group">
+              <span>Arrival Date</span>
+              <input type="date" v-model="editTarget.form.Arrive_Date" />
+            </label>
+            <label class="field-group">
+              <span>Arrival Time</span>
+              <input type="time" v-model="editTarget.form.Arrive_Time" />
+            </label>
+          </div>
+
+          <div v-else class="modal__fields">
+            <label class="field-group">
+              <span>Check-in Date</span>
+              <input type="date" v-model="editTarget.form.Check_In_Date" />
+            </label>
+            <label class="field-group">
+              <span>Check-in Time</span>
+              <input type="time" v-model="editTarget.form.Check_In_Time" />
+            </label>
+            <label class="field-group">
+              <span>Check-out Date</span>
+              <input type="date" v-model="editTarget.form.Check_Out_Date" />
+            </label>
+            <label class="field-group">
+              <span>Check-out Time</span>
+              <input type="time" v-model="editTarget.form.Check_Out_Time" />
+            </label>
+          </div>
+
+          <p v-if="saveError" class="modal__error">{{ saveError }}</p>
+
+          <div class="modal__actions">
+            <button class="modal__btn modal__btn--cancel" :disabled="isSaving" @click="editTarget = null">Cancel</button>
+            <button class="modal__btn modal__btn--save" :disabled="isSaving" @click="submitEdit">
+              {{ isSaving ? 'Saving…' : 'Save Changes' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -250,6 +370,118 @@ onMounted(() => {
   color: var(--color-primary-dark);
 }
 
+.edit-btn {
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-primary-dark);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.edit-btn:hover {
+  background: var(--color-primary-bg);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 18px;
+  padding: 2rem;
+  width: min(480px, 92vw);
+  box-shadow: 0 20px 60px rgba(26, 54, 93, 0.18);
+}
+
+.modal__title {
+  margin: 0 0 1.25rem;
+  font-size: 1.2rem;
+  color: var(--color-primary-dark);
+}
+
+.modal__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.field-group input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: var(--color-text);
+  background: #f9fafb;
+  outline: none;
+}
+
+.field-group input:focus {
+  border-color: var(--color-primary-dark);
+  background: #fff;
+}
+
+.modal__error {
+  margin: 0.85rem 0 0;
+  font-size: 0.85rem;
+  color: #c0392b;
+}
+
+.modal__actions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.modal__btn {
+  padding: 0.55rem 1.2rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.modal__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal__btn--cancel {
+  background: #f0f2f5;
+  color: var(--color-text);
+}
+
+.modal__btn--save {
+  background: var(--color-primary-dark);
+  color: #fff;
+}
+
+.modal__btn--save:not(:disabled):hover {
+  opacity: 0.88;
+}
+
 @media (max-width: 768px) {
   .my-trips-view {
     padding: 1rem;
@@ -259,6 +491,10 @@ onMounted(() => {
   .trip-card__header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .modal__fields {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -5,6 +5,7 @@ import FlightList from '../components/FlightList.vue'
 import HotelList from '../components/HotelList.vue'
 import ActivityList from '../components/ActivityList.vue'
 import SummaryPanel from '../components/SummaryPanel.vue'
+import HistoricalPricePanel from '../components/HistoricalPricePanel.vue'
 import { useSearch } from '../composables/useSearch.js'
 import { useBooking } from '../composables/useBooking.js'
 import { useAuth } from '../composables/useAuth.js'
@@ -23,12 +24,14 @@ const {
   selectFlight,
   selectReturnFlight,
   selectHotel,
+  toggleActivity,
   clearSelections,
   book,
 } = useBooking()
 const { isAuthenticated, userEmail } = useAuth()
 
 const activeTab = ref('flights')
+const historyFlight = ref(null)
 
 const tabs = [
   { key: 'flights', label: 'Flights', icon: '✈️' },
@@ -130,6 +133,7 @@ function handleClear() {
                   :error="errors.flights"
                   :selected-flight="selectedFlight"
                   @select="selectFlight"
+                  @view-history="historyFlight = $event"
                 />
               </div>
 
@@ -141,6 +145,7 @@ function handleClear() {
                   :error="errors.returnFlights"
                   :selected-flight="selectedReturnFlight"
                   @select="selectReturnFlight"
+                  @view-history="historyFlight = $event"
                 />
               </div>
             </div>
@@ -155,8 +160,10 @@ function handleClear() {
             <ActivityList
               v-show="activeTab === 'activities'"
               :activities="results.activities"
+              :selected-activities="selectedActivities"
               :loading="loading.activities"
               :error="errors.activities"
+              @toggle="toggleActivity"
             />
           </div>
         </div>
@@ -181,6 +188,12 @@ function handleClear() {
       </div>
     </div>
   </div>
+
+  <HistoricalPricePanel
+    :flight="historyFlight"
+    :show="!!historyFlight"
+    @close="historyFlight = null"
+  />
 </template>
 
 <style scoped>
