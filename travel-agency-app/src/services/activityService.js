@@ -224,7 +224,7 @@ async function searchActivitiesViaApi(searchParams) {
         country_name,
         locale: 'en-gb',
         page_number: 0,
-        currency: 'AED',
+        currency: 'USD',
         order_by: 'attr_book_score',
       },
       headers: {

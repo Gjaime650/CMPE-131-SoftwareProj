@@ -29,40 +29,9 @@ const SKY_ID_MAP = {
   FCO: 'ROMA',  // Rome area
 }
 
-// Skyscanner numeric entity IDs — required by the /flights/search seed endpoint
-const ENTITY_ID_MAP = {
-  SFO: '27544008',
-  CDG: '27539654',
-  JFK: '27537542',
-  LAX: '27545003',
-  LHR: '27544850',
-  NRT: '27540932',
-  HNL: '27539681',
-  ORD: '27537581',
-  MIA: '27537627',
-  SEA: '27544830',
-  BOS: '27537482',
-  DXB: '27536633',
-  SIN: '27536533',
-  SYD: '27544734',
-  ICN: '27539489',
-  BKK: '27536408',
-  FRA: '27537543',
-  AMS: '27536490',
-  YYZ: '27544835',
-  YVR: '27545000',
-  MAD: '27540584',
-  FCO: '27537469',
-}
-
 export function toSkyId(iata) {
   const code = String(iata || '').trim().toUpperCase()
   return SKY_ID_MAP[code] || `${code}-sky`
-}
-
-function toEntityId(iata) {
-  const code = String(iata || '').trim().toUpperCase()
-  return ENTITY_ID_MAP[code] || null
 }
 
 function handleError(error, fallback) {
@@ -161,47 +130,15 @@ export const priceHistoryService = {
    * Response shape (too little data):
    *   { message: "Insufficient data for this time period", data_points: N }
    */
-  /**
-   * Seeds price history by running a real flight search through Search-API.
-   * Used as a fallback when price-calendar returns no data.
-   * Returns the number of records saved (from the response if available).
-   */
-  async seedViaFlightSearch(originIata, destinationIata, departureDate) {
-    const originEntityId = toEntityId(originIata)
-    const destinationEntityId = toEntityId(destinationIata)
-    if (!originEntityId || !destinationEntityId) {
-      throw new Error(`No entity ID mapping for ${originIata} or ${destinationIata}. Cannot seed via flight search.`)
-    }
-    try {
-      const response = await axios.get('/search-api/api/v1/flights/search', {
-        params: {
-          origin_sky_id: toSkyId(originIata),
-          origin_entity_id: originEntityId,
-          destination_sky_id: toSkyId(destinationIata),
-          destination_entity_id: destinationEntityId,
-          date: departureDate,
-          adults: 1,
-          currency: 'USD',
-          market: 'en-US',
-        },
-        timeout: 30000,
-      })
-      return response.data
-    } catch (error) {
-      handleError(error, 'Flight search seed failed.')
-    }
-  },
-
   async fetchPriceComparison(originIata, destinationIata, departureDate, airlineCode) {
     try {
-      const response = await axios.get(`${BASE}/price-comparison`, {
-        params: {
-          origin_sky_id: toSkyId(originIata),
-          destination_sky_id: toSkyId(destinationIata),
-          departure_date: departureDate,
-          airline_code: airlineCode,
-        },
-      })
+      const params = {
+        origin_sky_id: toSkyId(originIata),
+        destination_sky_id: toSkyId(destinationIata),
+      }
+      if (departureDate) params.departure_date = departureDate
+      if (airlineCode) params.airline_code = airlineCode
+      const response = await axios.get(`${BASE}/price-comparison`, { params })
       return response.data
     } catch (error) {
       handleError(error, 'Failed to fetch price comparison.')

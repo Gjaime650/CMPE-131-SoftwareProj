@@ -24,7 +24,6 @@ const RANGES = [
   { key: '1M', label: '1M', days: 30 },
   { key: '3M', label: '3M', days: 90 },
   { key: '6M', label: '6M', days: 180 },
-  { key: '1Y', label: '1Y', days: 365 },
 ]
 
 // ── Derived from flight prop ──────────────────────────────────────────────────
@@ -80,11 +79,7 @@ async function seedAndRefresh() {
   error.value = null
   noApiData.value = false
   try {
-    // Try price-calendar first; if it returns no records fall back to flight search
-    const calResult = await priceHistoryService.fetchPriceCalendar(origin.value, destination.value, departureDate.value)
-    if (!calResult || calResult.records_saved === 0) {
-      await priceHistoryService.seedViaFlightSearch(origin.value, destination.value, departureDate.value)
-    }
+    await priceHistoryService.fetchPriceCalendar(origin.value, destination.value, departureDate.value)
     await fetchHistory()
     if (allSnapshots.value.length === 0) {
       noApiData.value = true

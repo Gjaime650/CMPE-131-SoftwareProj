@@ -247,7 +247,7 @@ async function searchFlightsViaApi(searchParams) {
     children_number: childCount,
     locale: 'en-gb',
     page_number: 0,
-    currency: 'AED',
+    currency: 'USD',
     order_by: 'BEST',
     flight_type: isRoundTrip ? 'ROUNDTRIP' : 'ONEWAY',
     cabin_class: 'ECONOMY',

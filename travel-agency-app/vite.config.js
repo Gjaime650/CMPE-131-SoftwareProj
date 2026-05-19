@@ -13,7 +13,7 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/search-api': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/search-api/, ''),
       },

@@ -302,7 +302,7 @@ async function searchHotelsViaApi(searchParams) {
         children_number: Number(searchParams.children) || 0,
         locale: 'en-gb',
         include_adjacency: true,
-        filter_by_currency: 'AED',
+        filter_by_currency: 'USD',
         order_by: 'popularity',
         checkin_date: searchParams.fromDate,
         checkout_date: searchParams.toDate,

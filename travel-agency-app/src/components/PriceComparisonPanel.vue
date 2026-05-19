@@ -14,7 +14,7 @@ const error = ref(null)
 const result = ref(null)
 
 async function load() {
-  if (!props.origin || !props.destination || !props.departureDate || !props.airlineCode) return
+  if (!props.origin || !props.destination) return
   loading.value = true
   error.value = null
   result.value = null
@@ -22,8 +22,8 @@ async function load() {
     result.value = await priceHistoryService.fetchPriceComparison(
       props.origin,
       props.destination,
-      props.departureDate,
-      props.airlineCode,
+      null,
+      null,
     )
   } catch (err) {
     error.value = err.message

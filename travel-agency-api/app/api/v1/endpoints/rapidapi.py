@@ -17,7 +17,7 @@ async def search_attractions(
     country_name: str = Query(..., description="Example: United States"),
     locale: str = Query("en-gb"),
     page_number: int = Query(0, ge=0),
-    currency: str = Query("AED"),
+    currency: str = Query("USD"),
     order_by: str = Query("attr_book_score"),
     service: RapidApiService = Depends(get_rapidapi_service),
 ):
@@ -36,6 +36,41 @@ async def search_attractions(
         raise HTTPException(status_code=error.status_code, detail=error.detail) from error
 
 
+@router.get("/flights/search")
+async def search_flights(
+    depart_date: str = Query(..., description="Format: YYYY-MM-DD"),
+    from_code: str = Query(..., description="Example: ONT.AIRPORT"),
+    to_code: str = Query(..., description="Example: NYC.CITY"),
+    adults: int = Query(1, ge=1),
+    locale: str = Query("en-gb"),
+    page_number: int = Query(0, ge=0),
+    currency: str = Query("USD"),
+    order_by: str = Query("BEST"),
+    flight_type: str = Query("ONEWAY"),
+    cabin_class: str = Query("ECONOMY"),
+    children_ages: str | None = Query(None, description="Comma-separated ages, e.g. 5,0"),
+    return_date: str | None = Query(None, description="Format: YYYY-MM-DD"),
+    service: RapidApiService = Depends(get_rapidapi_service),
+):
+    try:
+        return service.search_flights(
+            depart_date=depart_date,
+            from_code=from_code,
+            to_code=to_code,
+            adults=adults,
+            locale=locale,
+            page_number=page_number,
+            currency=currency,
+            order_by=order_by,
+            flight_type=flight_type,
+            cabin_class=cabin_class,
+            children_ages=children_ages,
+            return_date=return_date,
+        )
+    except RapidApiError as error:
+        raise HTTPException(status_code=error.status_code, detail=error.detail) from error
+
+
 @router.get("/hotels/search")
 async def search_hotels(
     page_number: int = Query(0, ge=0),
@@ -48,7 +83,7 @@ async def search_hotels(
     categories_filter_ids: str | None = Query(None),
     children_ages: str | None = Query(None, description="Comma-separated ages, e.g. 5,0"),
     include_adjacency: bool = Query(True),
-    filter_by_currency: str = Query("AED"),
+    filter_by_currency: str = Query("USD"),
     order_by: str = Query("popularity"),
     checkin_date: str = Query(..., description="Format: YYYY-MM-DD"),
     checkout_date: str = Query(..., description="Format: YYYY-MM-DD"),
@@ -79,36 +114,3 @@ async def search_hotels(
         raise HTTPException(status_code=error.status_code, detail=error.detail) from error
 
 
-@router.get("/flights/search")
-async def search_flights(
-    depart_date: str = Query(..., description="Format: YYYY-MM-DD"),
-    from_code: str = Query(..., description="Example: ONT.AIRPORT"),
-    to_code: str = Query(..., description="Example: NYC.CITY"),
-    adults: int = Query(1, ge=1),
-    locale: str = Query("en-gb"),
-    page_number: int = Query(0, ge=0),
-    currency: str = Query("AED"),
-    order_by: str = Query("BEST"),
-    flight_type: str = Query("ONEWAY"),
-    cabin_class: str = Query("ECONOMY"),
-    children_ages: str | None = Query(None, description="Comma-separated ages, e.g. 5,0"),
-    return_date: str | None = Query(None, description="Format: YYYY-MM-DD"),
-    service: RapidApiService = Depends(get_rapidapi_service),
-):
-    try:
-        return service.search_flights(
-            depart_date=depart_date,
-            from_code=from_code,
-            to_code=to_code,
-            adults=adults,
-            locale=locale,
-            page_number=page_number,
-            currency=currency,
-            order_by=order_by,
-            flight_type=flight_type,
-            cabin_class=cabin_class,
-            children_ages=children_ages,
-            return_date=return_date,
-        )
-    except RapidApiError as error:
-        raise HTTPException(status_code=error.status_code, detail=error.detail) from error

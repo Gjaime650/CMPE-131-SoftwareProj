@@ -18,6 +18,8 @@ class RapidApiError(Exception):
 class RapidApiClient:
     def __init__(self, api_key: str) -> None:
         self.api_key = api_key
+        self._country_code_cache: dict[str, str] = {}
+        self._city_dest_id_cache: dict[tuple[str, str], str] = {}
 
     def search_attractions(
         self,
@@ -99,6 +101,10 @@ class RapidApiClient:
         )
 
     def _resolve_city_dest_id(self, dest_name: str, country_name: str) -> str:
+        cache_key = (self._normalize(dest_name), self._normalize(country_name))
+        if cache_key in self._city_dest_id_cache:
+            return self._city_dest_id_cache[cache_key]
+
         country_code = self._resolve_country_code(country_name)
         response = self._get(
             host="booking-com.p.rapidapi.com",
@@ -128,12 +134,16 @@ class RapidApiClient:
                 continue
 
             if self._normalize(str(city_name)) == normalized_dest_name:
-                return str(dest_id)
+                resolved = str(dest_id)
+                self._city_dest_id_cache[cache_key] = resolved
+                return resolved
 
         first_match = cities[0]
         first_match_dest_id = first_match.get("dest_id") or first_match.get("city_id")
         if first_match_dest_id:
-            return str(first_match_dest_id)
+            resolved = str(first_match_dest_id)
+            self._city_dest_id_cache[cache_key] = resolved
+            return resolved
 
         raise RapidApiError(
             404,
@@ -141,13 +151,16 @@ class RapidApiClient:
         )
 
     def _resolve_country_code(self, country_name: str) -> str:
+        normalized_country_name = self._normalize(country_name)
+        if normalized_country_name in self._country_code_cache:
+            return self._country_code_cache[normalized_country_name]
+
         response = self._get(
             host="booking-com.p.rapidapi.com",
             path="v1/static/country",
             params={},
         )
 
-        normalized_country_name = self._normalize(country_name)
         candidates: list[dict[str, Any]] = []
         if isinstance(response, list):
             candidates = [item for item in response if isinstance(item, dict)]
@@ -163,10 +176,14 @@ class RapidApiClient:
                 continue
 
             if self._normalize(str(code)) == normalized_country_name:
-                return str(code).lower()
+                resolved = str(code).lower()
+                self._country_code_cache[normalized_country_name] = resolved
+                return resolved
 
             if self._normalize(str(name)) == normalized_country_name:
-                return str(code).lower()
+                resolved = str(code).lower()
+                self._country_code_cache[normalized_country_name] = resolved
+                return resolved
 
         raise RapidApiError(404, f"Country not found: '{country_name}'.")
 
