@@ -46,17 +46,23 @@ function parseLocalDate(str) {
   return new Date(y, m - 1, d)
 }
 
-const filteredSnapshots = computed(() => {
+function snapshotsWithinDays(days) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const cutoff = new Date(today)
-  cutoff.setDate(cutoff.getDate() + maxDepartureDays.value)
+  cutoff.setDate(cutoff.getDate() + days)
   return allSnapshots.value.filter((s) => {
     if (!s.departure_date) return false
     const dep = parseLocalDate(s.departure_date)
     return !Number.isNaN(dep.getTime()) && dep >= today && dep <= cutoff
   })
-})
+}
+
+const filteredSnapshots = computed(() => snapshotsWithinDays(maxDepartureDays.value))
+
+// Price Range panel is hard-capped at 6 months regardless of the chart's
+// selected range tab, so "Most expensive day" can't surface a date a year out.
+const rangeWindowSnapshots = computed(() => snapshotsWithinDays(180))
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
 async function fetchHistory() {
@@ -181,6 +187,7 @@ watch(
           <PriceRangePanel
             :origin="origin"
             :destination="destination"
+            :snapshots="rangeWindowSnapshots"
           />
           <PriceComparisonPanel
             v-if="airlineCode"
@@ -188,6 +195,7 @@ watch(
             :destination="destination"
             :departure-date="departureDate"
             :airline-code="airlineCode"
+            :current-price="flight?.totalPrice ?? null"
           />
           <div v-else class="comparison-panel no-airline">
             <h4 class="panel-title">vs. Historical Average</h4>

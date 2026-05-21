@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { priceHistoryService } from '../services/priceHistoryService.js'
 
 const props = defineProps({
@@ -7,13 +7,37 @@ const props = defineProps({
   destination: { type: String, required: true },
   fromRecorded: { type: String, default: null },
   toRecorded: { type: String, default: null },
+  // When provided, min/max are derived from these snapshots client-side and
+  // the API call is skipped. Lets the parent constrain the window
+  // (e.g. cap to 6 months of departure dates).
+  snapshots: { type: Array, default: null },
 })
 
 const loading = ref(false)
 const error = ref(null)
 const rangeData = ref(null)
 
+// Derive min/max from snapshots when the parent supplies them.
+const derivedRange = computed(() => {
+  if (!Array.isArray(props.snapshots) || props.snapshots.length === 0) return null
+  const valid = props.snapshots.filter((s) => s.price != null)
+  if (valid.length === 0) return null
+  const minRow = valid.reduce((a, b) => (a.price <= b.price ? a : b))
+  const maxRow = valid.reduce((a, b) => (a.price >= b.price ? a : b))
+  return {
+    min_price: minRow.price,
+    min_departure_date: minRow.departure_date,
+    max_price: maxRow.price,
+    max_departure_date: maxRow.departure_date,
+    currency: minRow.currency,
+  }
+})
+
+const displayRange = computed(() => derivedRange.value ?? rangeData.value)
+
 async function load() {
+  // Skip the API call if the parent gave us snapshots.
+  if (props.snapshots != null) return
   if (!props.origin || !props.destination) return
   loading.value = true
   error.value = null
@@ -32,7 +56,7 @@ async function load() {
 }
 
 watch(
-  () => [props.origin, props.destination, props.fromRecorded, props.toRecorded],
+  () => [props.origin, props.destination, props.fromRecorded, props.toRecorded, props.snapshots],
   load,
   { immediate: true },
 )
@@ -63,16 +87,16 @@ function fmt(price) {
       <p>{{ error }}</p>
     </div>
 
-    <div v-else-if="rangeData" class="range-rows">
+    <div v-else-if="displayRange" class="range-rows">
       <div class="range-row range-row--best">
         <div class="range-badge badge--green">Best time to fly</div>
-        <div class="range-price">{{ fmt(rangeData.min_price) }}</div>
-        <div class="range-date">Depart {{ formatDate(rangeData.min_departure_date) }}</div>
+        <div class="range-price">{{ fmt(displayRange.min_price) }}</div>
+        <div class="range-date">Depart {{ formatDate(displayRange.min_departure_date) }}</div>
       </div>
       <div class="range-row range-row--worst">
         <div class="range-badge badge--red">Most expensive day</div>
-        <div class="range-price">{{ fmt(rangeData.max_price) }}</div>
-        <div class="range-date">Depart {{ formatDate(rangeData.max_departure_date) }}</div>
+        <div class="range-price">{{ fmt(displayRange.max_price) }}</div>
+        <div class="range-date">Depart {{ formatDate(displayRange.max_departure_date) }}</div>
       </div>
     </div>
 

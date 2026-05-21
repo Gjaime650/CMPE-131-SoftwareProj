@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { priceHistoryService } from '../services/priceHistoryService.js'
 
 const props = defineProps({
@@ -7,11 +7,25 @@ const props = defineProps({
   destination: { type: String, required: true },
   departureDate: { type: String, required: true },
   airlineCode: { type: String, required: true },
+  currentPrice: { type: Number, default: null },
 })
 
 const loading = ref(false)
 const error = ref(null)
 const result = ref(null)
+
+// Prefer the price from the ticket the user clicked. Fall back to the
+// backend's computed value only if the parent didn't supply one.
+const effectiveCurrent = computed(() =>
+  props.currentPrice != null ? Number(props.currentPrice) : result.value?.current_price ?? null,
+)
+
+const effectiveDiffPct = computed(() => {
+  const avg = result.value?.historical_average
+  const cur = effectiveCurrent.value
+  if (avg == null || cur == null || avg === 0) return null
+  return ((cur - avg) / avg) * 100
+})
 
 async function load() {
   if (!props.origin || !props.destination) return
@@ -59,6 +73,14 @@ function pctLabel(pct) {
   return Number(pct) > 0 ? 'above average' : 'below average'
 }
 
+function fmtDate(str) {
+  if (!str) return ''
+  const [y, m, d] = String(str).split('-').map(Number)
+  if (!y || !m || !d) return ''
+  const dt = new Date(y, m - 1, d)
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 const isInsufficient = (r) => r && r.message != null
 </script>
 
@@ -85,17 +107,20 @@ const isInsufficient = (r) => r && r.message != null
 
     <div v-else-if="result" class="comparison-rows">
       <div class="cmp-row">
-        <span class="cmp-label">Current price</span>
-        <span class="cmp-value">{{ fmt(result.current_price) }}</span>
+        <div class="cmp-label-group">
+          <span class="cmp-label">Current price</span>
+          <span v-if="departureDate" class="cmp-sub">Depart {{ fmtDate(departureDate) }}</span>
+        </div>
+        <span class="cmp-value">{{ fmt(effectiveCurrent) }}</span>
       </div>
       <div class="cmp-row">
         <span class="cmp-label">Historical average</span>
         <span class="cmp-value">{{ fmt(result.historical_average) }}</span>
       </div>
       <div class="cmp-divider" />
-      <div class="cmp-pct" :class="pctClass(result.difference_pct)">
-        <span class="cmp-pct-number">{{ fmtPct(result.difference_pct) }}</span>
-        <span class="cmp-pct-label">{{ pctLabel(result.difference_pct) }}</span>
+      <div class="cmp-pct" :class="pctClass(effectiveDiffPct)">
+        <span class="cmp-pct-number">{{ fmtPct(effectiveDiffPct) }}</span>
+        <span class="cmp-pct-label">{{ pctLabel(effectiveDiffPct) }}</span>
       </div>
       <div class="cmp-footer">{{ result.data_points }} price point{{ result.data_points === 1 ? '' : 's' }} for {{ airlineCode }}</div>
     </div>
@@ -178,9 +203,21 @@ const isInsufficient = (r) => r && r.message != null
   align-items: center;
 }
 
+.cmp-label-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
 .cmp-label {
   font-size: 0.82rem;
   color: var(--color-text-muted);
+}
+
+.cmp-sub {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  opacity: 0.75;
 }
 
 .cmp-value {
